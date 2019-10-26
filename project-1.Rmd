@@ -1,5 +1,10 @@
 ---
 title: "project-1"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: "Shozen Dan"
 date: "10/25/2019"
 output: html_document
@@ -302,3 +307,6 @@ results <- results + labs(title="Prediction Results", subtitle="scatter plot", x
 plot(results)
 ```
 Figure 10 shows the prediction results over the original scatter plot. The purple line is our regression function. The confidence interval is shown by the red dotted line, while the prediction interval is shown by the orange line. We can see that as Living Space(X) moves further away from its mean, the margin of prediction error increases.
+
+## VII. Conclusion
+From exploratory data analysis, we discovered that the Price (Y) variable had an extreme positively skewed distribution and that the variance of error increase as Living Space (X) increased. In order to remedy this, we performed a log transformation on Price which normalized the error distribution. From the test statistics and p-value of our slope, we confirmed that there was a significant linear relationship between living space and price. Also, from our 95% confidence interval we confirmed that the relationship was positive. Finally, we computed the Bonferroni adjusted 95% confidence and prediction intervals for the requested prediction values. 
