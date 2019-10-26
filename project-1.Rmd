@@ -1,0 +1,304 @@
+---
+title: "project-1"
+author: "Shozen Dan"
+date: "10/25/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Importing Packages and Data
+```{r}
+library(tidyverse)
+df = read_csv('./data/KingCounty.csv')
+```
+
+## I. Introduction
+The goal of this analysis is to create an accurate model that will predict the houses prices in King County, Washington based on the living space. We have been asked to predict the prices of three houses with living spaces of 2800, 3200, and 8000 square feet. The question we are trying to answer is, what is the linear relationship between price and living space if any.
+
+## II. Exploratory Data Analysis
+```{r}
+options(scipen=999) # disable scientific notation
+Y_mean = mean(df$price)
+Y_std = sd(df$price)
+X_mean = mean(df$sqft_living)
+X_std = sd(df$sqft_living)
+print(paste(c('Mean of Y(Price):', 'Standard Deviation of Y:'), c(Y_mean, Y_std)))
+print(paste(c('Mean of X(Square Feet):', 'Standard Deviation of X:'), c(X_mean, X_std))) 
+```
+```{r}
+summary(df)
+```
+#### 1. Distribution of Price(Y)
+```{r}
+# Histogram for Y
+theme_set(theme_bw()) # set to black and white theme
+price_hist = ggplot(data = df, aes(x = df$price)) + 
+  geom_histogram(bins = 30) + 
+  geom_vline(xintercept = Y_mean, color="red", size=.5) + #Mean 
+  geom_vline(xintercept = 460000, linetype="dotted", color="red", size=.7) + #Median
+  annotate(geom="text", x = Y_mean, y=175, label="Mean", color="red") +
+  annotate(geom="text", x = 460000, y=150, label="Median", color="red") + 
+  labs(title="Distribution of Price", x="Price(dollars)", y="Count", subtitle="histogram (bins=30)", caption="Exploratory Data Analysis")
+plot(price_hist)
+```
+```{r}
+outliers <- boxplot(df$price, plot=FALSE)$out
+paste('number of potential outliers:', length(outliers))
+```
+
+Figure 1 shows the distribution of house prices in King County, Washington. The mean, shown by the red line, is 566594.28 dollars while the median, shown by the dotted line, is 460000 dollars. The standard deviation is 434558.62 dollars. The minimum and maximum (scope) of Price(Y) is 90000 to 5570000 dollars. From the histogram we can see that the variable Price(Y) has a unimodal distribution that is positively skewed. There are 29 potential outliers and they are pulling the mean above the median. 
+Note: definition of a potential outlier here is any value above QU + 1.5*IQR and below QL + 1.5*IQR 
+
+#### 2. Distribution of Living Space(X) 
+```{r}
+# Histogram for X
+sqft_hist = ggplot(data = df, aes(x = df$sqft_living)) +
+  geom_histogram(bins=30) + 
+  geom_vline(xintercept = X_mean, color="red", size=.5) + #Mean 
+  geom_vline(xintercept = 1940, linetype="dotted", color="red", size=.7) + #Median
+  annotate(geom="text", x = X_mean, y=80, label="Mean", color="red") +
+  annotate(geom="text", x = 1940, y=70, label="Median", color="red") +
+  labs(title = "Distribution of Living Space", x="Living Space(sqft)", y="Count", subtitle="histogram (bins=30)", caption="Exploratory Data Analysis")
+plot(sqft_hist)
+```
+```{r}
+outliers <- boxplot(df$sqft_living, plot=FALSE)$out
+paste('number of potential outliers:', length(outliers))
+```
+Figure 2 shows the distribution of the house living space in King County, Washington. The mean, shown by the red line, 2115 square feet and the median, shown by the dotted line, is 1940 square feet.  The standard deviation is 976.971 square feet. The minimum and maximum(scope) of Living Space(X) is 390 to 9200 square feet. Similar to the distribution of Price(Y), Living Space(X) is also unimodal and positively skewed with 15 potential outliers. However it is more symmetric and closer to a normal distribution than Price(Y). 
+
+#### 3. Relationship between Living Space and Price
+```{r}
+scatter = ggplot(data = df, aes(x = df$sqft_living, y = df$price)) +
+  geom_point(alpha=.7) + 
+  geom_smooth(method="lm", se=F, size=.5) +
+  geom_hline(yintercept = Y_mean, color="red", linetype="dotted", size=.7) + #X Mean
+  geom_vline(xintercept = X_mean, color="blue", linetype="dotted", size=.7) + #Y Mean
+  annotate(geom="text", x = 9200, y = Y_mean + 250000, label="Y mean", color="red") +
+  annotate(geom="text", x = X_mean + 500, y = 5700000, label="X Mean", color="blue") +
+  labs(title = "Living Space and Price", subtitle="scatter plot", x = "Living Space(sqft)", y = "Price(dollars)", caption = "Exploratory Data Analysis") 
+plot(scatter)
+```
+Figure 3 depicts the relationship between Price(Y) and Living Space(X). From this scatter plot, we can see that there seems to be a positive relationship between the price of houses and living space. Because the distribution of Price(Y) is skewed positively, most of the data is concentrated in the lower regions of plot. This follows our common sense, because most people live in small or moderately sized houses with an affordable price. The blue line within the plot is the linear regression line for the data. We can see from the plot that a few outliers are causing an increase in the slope of the line. 
+
+## II. Diagnostics
+#### 1. Distribution of Errors
+```{r}
+#error and X
+linearMod1 <- lm(price ~ sqft_living, data = df)
+df$err_1 <- df$price - predict.lm(linearMod1)
+diagnostic_histogram <- ggplot(data = df, aes(x=df$err_1)) +
+  geom_histogram(bins=30) + 
+  geom_vline(xintercept = mean(df$err_1), linetype="dotted", color = "red", size=.7) + 
+  labs(title="Distribution of Errors", subtitle="histogram (bins=30)", x="Error", y="Count", caption="Diagnostics")
+plot(diagnostic_histogram)
+```
+```{r}
+outliers <- boxplot(df$err_1, plot=FALSE)$out
+paste('number of potential outliers:', length(outliers))
+```
+Figure 4 shows the distribution of error for the linear regression line in Figure 3. It is a unimodal distribution that resembles a normal distribution but positively skewed. Because there are multiple extreme errors, this plot tells us that there are outliers(18 potential) within our data that our linear regression model cannot account for. 
+```{r}
+shapiro.test(df$err_1)
+```
+The Shapiro-Wilk normality test will test for the normality of a distribution where the null hypothesis H0 is the samples are normally distributed and the alternative hypothesis is where the samples are not normally distributed. The result of the test for the errors of our first regression line is W = 0.82829 and the p-value is less than 2.2 * 10^(-15). The p-value is said to be adaquate for p-value < 0.1 in Royston(1995). Here the p-value is much smaller than 0.1, thus we reject the null hypothesis and adopt the alternative which is that the distribution is non-normal. 
+From the Figure 4 and the Shapiro-Wilk test, we can say that the assumption that the errors are distributed normally is violated. 
+
+
+#### 2. Variance of Errors
+```{r}
+diagnostic_scatter <- ggplot(data = df, aes(x=sqft_living, y=err_1)) +
+  geom_point(alpha=.7) + 
+  geom_hline(yintercept = 0, linetype = "dotted", color="red", size=.7) + 
+  labs(title = "Error and Living Space", subtitle = "scatter plot", caption = "Diagnostics", x="Living Space(sqft.)", y="Error")
+plot(diagnostic_scatter)
+```
+Figure 5 shows the error plotted against Living Space(X). There is a clear pattern here the variance of the errors increases as Living Space(X) increases. 
+```{r}
+#Filgner-Killeen test
+fligner.test(df$err_1, df$sqft_living)
+```
+The Fligner-Killeen (median) test is one of the many tests to determine whether the sample variance is a constant(Conover, Johnson & Johnson, 1981). The null hypothesis for this test is that the variance of samples are constant and the alternative hypothesis is that the variance is not constant. is Our results for the test conducted for the error and living space is med X^2 = 338.08 at 258 degrees of freedom with a p-value of 0.0005895. Since, the p-value is smaller than 0.1 we reject the null and adopt the alternative which is that the variance of errors is not a constant. 
+From figure 5 and the Fligner-Killeen test, we can say that the assumption that the variance of errors is a constant is violated. 
+
+## III. Remedial Measures
+The causes for the spread in error when Lining Space(X) increase are likely to be 1) the skewness of the distribution of Price(Y) and/or 2) that the relationship between X and Y are non-linear. In order to remedy this and bring the distribution of errors closer to a normal distribution with constant variance, we decided to perform a logarithm (base 10) transformation on Price(Y).
+```{r}
+df$log10price = log10(df$price) #Add a new column to the data
+logY_mean = mean(df$log10price)
+logY_median = median(df$log10price)
+logY_sd = sd(df$log10price)
+```
+
+#### 1. The Distribution of log(Price)
+```{r}
+log_price_hist = ggplot(data = df, aes(x = df$log10price)) + 
+  geom_histogram(bins = 30) + 
+  geom_vline(xintercept = logY_mean, color="red", size=.5) + #Mean 
+  geom_vline(xintercept = logY_median, linetype="dotted", color="red", size=.7) + #Median
+  annotate(geom="text", x = logY_mean, y=60, label="Mean", color="red") +
+  annotate(geom="text", x = logY_median, y=55, label="Median", color="red") + 
+  labs(title="Distribution of log(Price)", x="log(Price)", y="Count", subtitle="histogram", caption="bins=30, base=10")
+plot(log_price_hist)
+```
+```{r}
+outliers <- boxplot(df$log10price, plot=FALSE)$out
+paste('number of potential outliers:', length(outliers))
+```
+Figure 6 shows the distribution of Price after the logarithm transformation.
+From it, we can see that, compared to Figure 1, the distribution is less skewed and closer to a normal distribution. The mean, depicted by the red line, for this new distribution is 5.683 and the standard deviation is 0.229. The number of potential outliers has been reduced from 29 to 8. 
+
+#### 2. The Linear Regression Model
+```{r}
+log_y_scatter = ggplot(data = df, aes(x = df$sqft_living, y = df$log10price)) +
+  geom_point(alpha=.7) + 
+  geom_smooth(method="lm", se=F) +
+  geom_hline(yintercept = logY_mean, color="red", linetype="dotted", size=.7) + #X Mean
+  geom_vline(xintercept = X_mean, color="blue", linetype="dotted", size=.7) + #Y Mean
+  annotate(geom="text", x = 9200, y = logY_mean + .1, label="Y mean", color="red") +
+  annotate(geom="text", x = X_mean + 500, y = 7, label="X Mean", color="blue") +
+  labs(title = "Living Space and Price", subtitle="scatter plot", x = "Living Space(sqft)", y = "log(Price)", caption = "Diagnostics") 
+plot(log_y_scatter)
+```
+Figure 7 shows the relationship between log10Price and Living Space. Compared to Figure 3(scatter plot before the transformation on Price), the smaller values of our data are more spread out while larger values are brought closer to the mean. Our new linear regression line, drawn in blue, seems to describe the data better because the outliers were remedied. 
+
+#### 3. Distribution of Errors
+```{r}
+#error and X
+linearMod2 <- lm(log10price ~ sqft_living, data = df)
+df$err_2 <- df$log10price - predict.lm(linearMod2)
+err_2 <- ggplot(data = df, aes(x=df$err_2)) +
+  geom_histogram(bins=30) + 
+  geom_vline(xintercept = mean(df$err_2), linetype="dotted", color = "red", size=.7) + 
+  labs(title="Distribution of Errors", subtitle="Histogram", x="Error", y="Count", caption="Diagnostics")
+plot(err_2)
+```
+```{r}
+outliers <- boxplot(df$err_2, plot=FALSE)$out
+paste('number of potential outliers:', length(outliers))
+```
+Figure 8 shows the distribution of error for the new regression line. Compared to Figure 4(The distribution of errors before the logarithm the transformation), this histogram centered around 0, more symmetric, and contains fewer potential outliers.
+```{r}
+shapiro.test(df$err_2)
+```
+The results for the Shapiro-Wilk normality test is W = 0.99715 with a p-value of 0.5396. Since the p-value is greater than 0.1 we do not reject the null hypothesis that says the distribution is normal. 
+From the histogram and the Shapiro-Wilk test we can say that the assumption of normality for errors is not violated.
+
+#### 4. The Variance of Errors
+```{r}
+diagnostic_scatter_2 <- ggplot(data = df, aes(x=sqft_living, y=err_2)) +
+  geom_point(alpha=.7) + 
+  geom_hline(yintercept = 0, linetype="dotted", color="red", size=.7) + 
+  labs(title = "Error and Living Space", subtitle = "Scatter", caption = "Diagnostics", x="Living Space(sqft)", y="Error(log(Price))")
+plot(diagnostic_scatter_2)
+```
+Figure 9 shows the error of our new regression line plotted against Living Space(X). The errors are distributed evenly around 0 and there seems to be no discernable pattern within the scatter plot. The outliers that were present in Figure 5 has been brought closer to 0 due to the transformation. 
+```{r}
+fligner.test(df$err_2, df$sqft_living)
+```
+The results for the Fligner-Killeen test is as follows: med chi-squared = 303.06 at 258 degrees of freedom with a p-value of 0.02823. Since, the p-value is smaller than 0.1 we reject the null and adopt the alternative which is that the variance of errors is not a constant. 
+From the Figure 8 and the Fligner-Killeen, test we conclude that the assumption of constant variance for errors is still violated. However, we can argue that because the p-value for the Fligner-Killeen test increased from 0.0005895 to 0.02823, the transformation on Y has led to a more constant variance for the errors. 
+To summarize, the logarithm transformation on Y has helped normalize the distribution and led to a more constant variance for the errors. These changes justifies our tranformation and suggests that there might be an exponential relationship between Y and X. 
+
+## IV. Analysis
+#### 1. Slope
+```{r}
+summary(linearMod2)
+```
+The first test we conducted was to test whether there was a hypothesis test on the slope. The null hypothesis H0 is where the slope is zero and our alternative hypothesis HA is that the slope is non-zero, indicating that there is a significant linear relationship between Living Space(X) and log10(Price)(Y). Table-1 shows the estimate, standard error, t-value, and p-value for our regression model. The t-value for the slope of our model is 22.65 at 498 degrees of freedom and the p-value is less than 2.0 * 10-15.
+
+#### 2. Confidence Interval
+```{r}
+### calculate 95% interval for slope
+confint(linearMod2, level=0.95)
+10 ^ confint(linearMod2, level=0.95)
+```
+The second test we conducted was to see whether the slope was positive. Table 2 shows the confidence interval for the slope. The results at 95% critical value was 0.0001527328 and 0.0001817495. Because the dependent variable is transformed using a log10 function the unit of the slope is (log10Y/X). To bring this into better perspective, the second row of the table shows the 10 to the power of value of slope. 
+
+#### 3. Model Fit 
+The R2 for our model was 0.5074. 
+
+## V. Interpretation
+#### 1.	Intercept
+Since there are no houses with a living space of 0 and the scope of the model is 390 to 9200 square feet, the intercept does not have any practical interpretations.
+
+#### 2.	Slope
+The p-value for our slope was less than 2.0 * 10-15, meaning that we would have less than a 2.0 * 10-15 chance of obtaining a sample with the same or more extreme slope. Since the p-value is extremely small we can reject the null hypothesis at α = 0.01 and adopt the alternative hypothesis HA and say that there is a significant linear relationship between living space and price.
+
+#### 3.	Confidence Interval 
+From the 95% confidence interval for the slope, we are 95% confident that a 1 square foot increase in living space will result in an average increase of 0.000153 to 0.000182 log10(Price) or more simply 1.000352 to 1.000419(0.0352% to 0.0419%) increase in price. Because both values in the interval are positive, we can say with 95 % confidence that there is a significant positive relationship between price and living space. 
+
+#### 4.	Model Fit
+Our R2 result informs us that our linear regression model accounted for 51% of the variance of Y.
+
+## VI. Prediction
+```{r}
+alpha <- 0.05 #critical value
+g <- 3 #number of intervals
+deg_free <- length(df$price) - 2 #degrees of freedom
+B <- 1-qt((1-alpha)/(2*g), deg_free) #Bonferroni statistic
+se <- 0.1612 #standard error
+n <- length(df$price) #number of samples
+x <- c(2800, 3200, 8000) #prediction values
+X_ssv <- sum((df$sqft_living - X_mean)^2) #sum of squared variance
+
+s_yhat <- se*sqrt(1/n + (x-X_mean)^2/X_ssv)
+s_ydot <- se*sqrt(1 + 1/n + (x-X_mean)^2/X_ssv)
+
+newdata = data.frame("sqft_living" = c(2800, 3200, 8000))
+predict.yhat = predict.lm(linearMod2, newdata, interval=c("none"))
+
+bon.upper.yhat <- predict.yhat + B * s_yhat
+bon.lower.yhat <- predict.yhat - B * s_yhat
+
+bon.upper.ydot <- predict.yhat + B * s_ydot
+bon.lower.ydot <- predict.yhat - B * s_ydot
+
+#Create data frame
+df.bon.yhat = data.frame("prediction" = predict.yhat, "lower" = bon.lower.yhat, "upper" = bon.upper.yhat)
+df.bon.ydot= data.frame("prediction" = predict.yhat, "lower" = bon.lower.ydot, "upper" = bon.upper.ydot)
+```
+
+#### 1.Confidence Intervals for the Average
+```{r}
+10 ^ df.bon.yhat
+```
+Table 3 shows the Bonferroni adjusted 95% confidence interval for the average price of requested prediction values. From these results we can say the we are family-wise 95% confident that the average price of houses with 2800, 3200, and 8000 square feet of living space will fall within these price ranges. 
+
+#### 2.Prediction Intervals
+```{r}
+10 ^ df.bon.ydot
+```
+Table 4 shows the Bonferroni adjusted 95% prediction interval for the requested prediction values. From these results we can say that we are family-wise 95% confident that the prices of houses with 2800, 3200, and 8000 square feet of living space will fall within these price ranges. 
+
+```{r}
+df.bon.yhat = data.frame("value"=c(2800, 3200, 8000), "prediction" = predict.yhat, "lower" = bon.lower.yhat, "upper" = bon.upper.yhat)
+df.bon.ydot = data.frame("value"=c(2800, 3200, 8000), "prediction" = predict.yhat, "lower" = bon.lower.ydot, "upper" = bon.upper.ydot)
+
+exp_regress <- function(x){
+  return(10^(5.329603313 + 0.000167241*x))
+}
+
+results <- ggplot(df, aes(x=sqft_living, y=price)) +
+  geom_point(alpha=.3) + 
+  stat_function(fun = exp_regress, color='purple', alpha=.7) # Regression Line
+
+#Confidence Interval
+results <- results + geom_point(data = df.bon.yhat, aes(x=value, y=10^prediction), color='red', alpha=.7) + # Prediction
+  geom_point(data = df.bon.yhat, aes(x=value, y=10^lower), color='red') +
+  geom_point(data = df.bon.yhat, aes(x=value, y=10^upper), color='red') + 
+  geom_segment(data = df.bon.yhat, aes(x = value, y = 10^lower, xend = value, yend = 10^upper), linetype="dotted", color="red") #Confidence interval
+
+#Prediction Interval
+results <- results + geom_point(data = df.bon.ydot, aes(x=value, y=10^lower), color='orange') + 
+  geom_point(data = df.bon.ydot, aes(x=value, y=10^upper), color='orange') + 
+  geom_segment(data = df.bon.ydot, aes(x = value, y = 10^lower, xend = value, yend = 10^upper), linetype="dotted", color="orange") 
+
+results <- results + labs(title="Prediction Results", subtitle="scatter plot", x="Living Space(sqft.)", y="Price(dollars)", caption = "Prediction")
+  
+plot(results)
+```
+Figure 10 shows the prediction results over the original scatter plot. The purple line is our regression function. The confidence interval is shown by the red dotted line, while the prediction interval is shown by the orange line. We can see that as Living Space(X) moves further away from its mean, the margin of prediction error increases.
