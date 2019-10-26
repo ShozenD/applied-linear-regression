@@ -13,3 +13,4 @@ RnwWeave: Sweave
 LaTeX: pdfLaTeX
 
 BuildType: Website
+WebsitePath: ~/Downloads/UC Davis Exchange/Class/STA 108B Regression Analysis/applied-linear-regression
